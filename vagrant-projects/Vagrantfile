@@ -1,0 +1,58 @@
+nodes = {
+    'ubuntu-hub64'        => [1, 110],
+    'ubuntu-10-client32'  => [1, 200],
+    'ubuntu-10-client64'  => [1, 201],
+    'ubuntu-12-client32'  => [1, 202],
+    'ubuntu-12-client64'  => [1, 203],
+}
+
+Vagrant.configure("2") do |config|
+    config.vm.box = "precise64"
+    config.vm.box_url = "/media/bishwa/353testing/precise64.box"
+
+    #Default is 2200..something, but port 2200 is used by forescout NAC agent.
+    config.vm.usable_port_range= 2800..2900 
+
+    nodes.each do |prefix, (count, ip_start)|    	       
+        count.times do |i|
+            #hostname = "%s-%02d" % [prefix, (i+1)]
+            hostname = "%s" % [prefix, (i+1)]
+
+            config.vm.define "#{hostname}" do |box|
+	    	if prefix == "ubuntu-10-client32"
+		   box.vm.box     = 'ubuntu-10-client32'
+		   box.vm.box_url = '/media/bishwa/353testing/lucid32.box'
+               	elsif prefix == "ubuntu-10-client64"
+		      box.vm.box     = 'ubuntu-10-client64'
+		      box.vm.box_url = '/media/bishwa/353testing/lucid64.box'
+                elsif prefix == "ubuntu-12-client32"
+		      box.vm.box     = 'ubuntu-12-client32'
+		      box.vm.box_url = '/media/bishwa/353testing/precise32.box'
+	        elsif prefix == "ubuntu-12-client64"
+		  	box.vm.box     = 'ubuntu-12-client64'
+		  	box.vm.box_url = '/media/bishwa/353testing/precise64.box'
+	        elsif prefix == "ubuntu-hub64"
+		  	box.vm.box     = 'ubuntu-hub64'
+		  	box.vm.box_url = '/media/bishwa/353testing/precise64.box'
+	       	end
+
+                box.vm.hostname = "#{hostname}.book"
+                box.vm.network :private_network, ip: "172.16.0.#{ip_start+i}", :netmask => "255.255.0.0"
+                box.vm.network :private_network, ip: "10.10.0.#{ip_start+i}", :netmask => "255.255.0.0" 
+
+                box.vm.provision :shell, :path => "common.sh"
+
+                # Otherwise using VirtualBox
+                box.vm.provider :virtualbox do |vbox|
+                    # Defaults
+                    vbox.customize ["modifyvm", :id, "--memory", 512]
+                    vbox.customize ["modifyvm", :id, "--cpus", 1]
+                    if prefix == "ubuntu-hub64"
+                            vbox.customize ["modifyvm", :id, "--memory", 3128]
+                            vbox.customize ["modifyvm", :id, "--cpus", 2]
+                    end
+                end
+            end
+        end
+    end
+end
